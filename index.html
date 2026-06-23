@@ -154,6 +154,21 @@ body{font-family:'Vazirmatn','Tahoma','Segoe UI',sans-serif;color:var(--ink);min
 .tlesson{font-size:13px;line-height:1.85;background:var(--bg);border-radius:10px;padding:9px 11px;}
 .tdate{font-size:11px;color:var(--muted);}
 .tphoto{width:100%;border-radius:12px;cursor:pointer;}
+.pwrap{display:flex;align-items:center;gap:10px;}
+.pbar{flex:1;height:8px;background:var(--bg);border-radius:999px;overflow:hidden;}
+.pfill{height:100%;background:var(--pine);border-radius:999px;transition:width .25s;}
+.pnum{font-size:11.5px;font-weight:800;color:var(--pine);white-space:nowrap;}
+.citem{display:flex;align-items:center;gap:11px;padding:9px 0;border-bottom:1px solid var(--line);}
+.clabel{flex:1;font-size:14px;line-height:1.55;}
+.creq{font-size:9.5px;font-weight:800;color:#A8472F;background:#FBEDE9;padding:2px 7px;border-radius:6px;white-space:nowrap;}
+.copt{font-size:9.5px;font-weight:700;color:var(--muted);background:var(--bg);padding:2px 7px;border-radius:6px;white-space:nowrap;}
+.cselrow{display:flex;flex-direction:column;gap:7px;padding:10px 0;border-bottom:1px solid var(--line);}
+.cseltop{display:flex;align-items:center;gap:7px;}
+.csellbl{font-size:13px;font-weight:700;color:var(--muted);}
+.solid.off{background:#CBD3CF;cursor:default;}
+.tpend{font-size:11px;font-weight:800;color:var(--amber);margin-right:auto;}
+.trade.pend{border-right:4px solid var(--amber);}
+.chkline{font-size:11px;color:var(--pine);font-weight:700;margin-top:2px;}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
 </style>
 </head>
@@ -207,7 +222,7 @@ var EMOS=[['calm','آرام'],['confident','مطمئن'],['unsure','مردد'],[
 var BROKE=[['no','نه'],['little','یه‌کم'],['yes','آره']];
 var MIST=[['none','هیچ‌کدوم'],['nosetup','ورود بدون ستاپ'],['early','ورودِ زودهنگام'],['movedSL','جابه‌جایی استاپ'],['revenge','انتقامی'],['earlyclose','زود بستن'],['fomo','FOMO']];
 var SETL={bos:'BOS',choch:'CHoCH',hunt_prev:'هانت ساعت قبل',hunt_liq:'هانت نقدینگی',fvg:'FVG',ifvg:'IFVG',ob:'اوردربلاک',gap1h:'گپ ۱ ساعته',gap4h:'گپ ۴ ساعته',gap1d:'گپ ۱ روزه',other:'سایر'},PDL={prem:'پریمیوم',disc:'دیسکانت',eq:'تعادل'},SESL={london:'لندن',ny:'نیویورک',asia:'آسیا'},PLNL={full:'پایبندی کامل',partial:'پایبندی نسبی',no:'خارج از پلن'},EMOL={calm:'آرام',confident:'مطمئن',unsure:'مردد',greedy:'طمع',fear:'ترس',fomo:'FOMO',tired:'خسته'},MISL={none:'بدون اشتباه',nosetup:'ورود بدون ستاپ',early:'ورودِ زودهنگام',movedSL:'جابه‌جایی استاپ',revenge:'انتقامی',earlyclose:'زود بستن',fomo:'FOMO'};
-function blankDraft(){return {symbol:'',dir:'',setup:[],setupother:'',pd:'',setupdate:todayISO(),setuptime:'',session:'',entry:'',sl:'',tp:'',outcome:'',risk:'',r:'',pct:'',pips:'',amount:'',balance:'',plan:'',emotion:'',broke:'',discipline:0,mistake:'',lesson:'',note:'',imgData:'',imgType:''};}
+function blankDraft(){return {symbol:'',dir:'',setup:[],setupother:'',pd:'',setupdate:todayISO(),setuptime:'',session:'',entry:'',sl:'',tp:'',outcome:'',risk:'',r:'',pct:'',pips:'',amount:'',balance:'',plan:'',emotion:'',broke:'',discipline:0,mistake:'',lesson:'',note:'',chk:null,imgData:'',imgType:''};}
 
 /* ---------- schedule ---------- */
 function todayBlocks(day){
@@ -233,7 +248,7 @@ function findNext(bs,m){var af=bs.filter(function(x){return toMin(x.s)>m;}).sort
 function faDate(opt){try{return new Date().toLocaleDateString('fa-IR',opt);}catch(e){return new Date().toDateString();}}
 
 /* ---------- state ---------- */
-var S={tab:'today',tasks:load('planner_tasks',null),notes:load('planner_notes',[]),files:load('planner_files',[]),trades:load('planner_trades',[]),jed:false,draft:null,editor:false,fmsg:''};
+var S={tab:'today',tasks:load('planner_tasks',null),notes:load('planner_notes',[]),files:load('planner_files',[]),trades:load('planner_trades',[]),jed:false,draft:null,chkOpen:false,chk:null,editId:null,editor:false,fmsg:''};
 if(!S.tasks){S.tasks=[{id:uid(),text:'دیباگ تابع تشخیص گپ',done:false},{id:uid(),text:'گسترش کامل مبحث هانت',done:false},{id:uid(),text:'تست و قضاوت نتایج',done:false}];save('planner_tasks',S.tasks);}
 
 /* ---------- views ---------- */
@@ -294,15 +309,90 @@ function mchips(field,opts){
 }
 function starRow(){var h='<div class="stars">';for(var i=1;i<=5;i++){h+='<button class="star'+(S.draft.discipline>=i?' on':'')+'" data-jstar="'+i+'">'+I.star+'</button>';}return h+'</div>';}
 function syncDraft(){if(!S.draft)return;['entry','sl','tp','risk','r','pct','pips','amount','balance','lesson','note','setuptime','setupdate','setupother'].forEach(function(k){var el=document.getElementById('j_'+k);if(el)S.draft[k]=el.value;});}
+var CHK=[
+ {cat:'جهت و موقعیت',items:[
+   {k:'dir',label:'جهت معامله',req:true,type:'select',opts:[['up','Buy'],['dn','Sell']]},
+   {k:'pd',label:'پریمیوم / دیسکانت',req:true,type:'select',opts:[['prem','پریمیوم'],['disc','دیسکانت'],['eq','تعادل']]}
+ ]},
+ {cat:'ساختار',items:[
+   {k:'bos',label:'BOS تأیید شده',req:true,type:'check'},
+   {k:'levelimp',label:'اهمیتِ سطحِ شکسته‌شده و نقطهٔ مرجع',req:true,type:'select',opts:[['low','کم'],['mid','متوسط'],['high','زیاد']]}
+ ]},
+ {cat:'هانت و نقدینگی',items:[
+   {k:'hunt_prev',label:'هانتِ ساعتِ قبل',req:true,type:'check'},
+   {k:'quarter',label:'ربعِ ساعت',req:false,type:'select',opts:[['q1','اول'],['q2','دوم'],['q3','سوم'],['q4','چهارم']]},
+   {k:'hunt_liq',label:'هانتِ سطوحِ نقدینگیِ مهم',req:true,type:'check'},
+   {k:'liq_newlevel',label:'این نقدینگی سقف/کفِ جدید زده؟',req:false,type:'check'},
+   {k:'hunt_daily',label:'هانتِ نقدینگیِ روزانه',req:false,type:'check'}
+ ]},
+ {cat:'گپ‌ها',items:[
+   {k:'gap_hourly',label:'برخورد با گپِ ۱ یا ۴ ساعته',req:false,type:'select',opts:[['gap1h','۱ ساعته'],['gap4h','۴ ساعته'],['both','هردو'],['no','نه']]},
+   {k:'gap_daily',label:'برخورد با گپِ روزانه',req:false,type:'check'}
+ ]},
+ {cat:'تأییدِ ورود (تایمِ پایین)',items:[
+   {k:'m2',label:'ستاپ در ۲ دقیقه تشکیل شده',req:false,type:'check'},
+   {k:'m3',label:'ستاپ در ۳ دقیقه تشکیل شده',req:false,type:'check'}
+ ]},
+ {cat:'ریسک و مدیریت سرمایه',items:[
+   {k:'risk_ok',label:'ریسک مشخص و حداکثر ۱–۲٪ بالانس',req:true,type:'check'},
+   {k:'sl_set',label:'حدِ ضرر از قبل تعیین شده',req:true,type:'check'},
+   {k:'rr_ok',label:'ریسک‌به‌ریوارد حداقل ۱:۲',req:true,type:'check'},
+   {k:'limit_ok',label:'به سقفِ تعداد/ضررِ روزانه نرسیدم',req:true,type:'check'},
+   {k:'corr_ok',label:'با معاملهٔ بازِ دیگه هم‌ریسکی ندارم',req:false,type:'check'}
+ ]},
+ {cat:'روان‌شناسی',items:[
+   {k:'calm',label:'آرام و سرحالم، نه خسته نه عصبانی',req:true,type:'check'},
+   {k:'not_revenge',label:'این معامله انتقامی/جبرانی نیست',req:true,type:'check'},
+   {k:'not_fomo',label:'از روی FOMO وارد نمی‌شم',req:true,type:'check'},
+   {k:'by_plan',label:'کاملاً طبقِ پلنه، نه احساسی',req:true,type:'check'},
+   {k:'accept_loss',label:'با ضررِ احتمالی کنار میام',req:false,type:'check'}
+ ]}
+];
+function chkSat(it){var v=S.chk[it.k];return it.type==='check'?v===true:!!v;}
+function chkProg(){var req=0,sat=0;CHK.forEach(function(g){g.items.forEach(function(it){if(it.req){req++;if(chkSat(it))sat++;}});});return {req:req,sat:sat,ready:sat===req};}
+function viewChecklist(){
+  var p=chkProg();
+  var h='<div class="jform">';
+  h+='<div class="ph" style="margin-bottom:2px"><h1 style="font-size:20px">چک‌لیستِ ورود</h1><p>تا همهٔ شرط‌های اجباری تیک نخوره، ثبت فعال نمی‌شه.</p></div>';
+  h+='<div class="pwrap"><div class="pbar"><div class="pfill" style="width:'+(p.req?Math.round(p.sat/p.req*100):0)+'%"></div></div><span class="pnum">'+toFa(p.sat)+'/'+toFa(p.req)+' اجباری</span></div>';
+  CHK.forEach(function(g){
+    h+='<div class="jdiv">'+esc(g.cat)+'</div>';
+    g.items.forEach(function(it){
+      var badge=it.req?'<span class="creq">اجباری</span>':'<span class="copt">اختیاری</span>';
+      if(it.type==='check'){
+        var on=S.chk[it.k]===true;
+        h+='<div class="citem"><button class="cbox'+(on?' on':'')+'" data-cset="'+it.k+'">'+(on?I.check:'')+'</button><span class="clabel">'+esc(it.label)+'</span>'+badge+'</div>';
+      } else {
+        h+='<div class="cselrow"><div class="cseltop"><span class="csellbl">'+esc(it.label)+'</span>'+badge+'</div><div class="chips">'+it.opts.map(function(o){var on=S.chk[it.k]===o[0];return '<button class="chip'+(on?' on':'')+'" data-csel="'+it.k+'" data-val="'+o[0]+'">'+esc(o[1])+'</button>';}).join('')+'</div></div>';
+      }
+    });
+  });
+  h+='<div class="erow" style="margin-top:6px"><button class="ghost" data-act="cancelchk">بی‌خیال</button><button class="solid'+(p.ready?'':' off')+'"'+(p.ready?' data-act="submitchk"':'')+'>ثبت و رفتن به ژورنال</button></div>';
+  return h+'</div>';
+}
+function chkTags(chk){
+  if(!chk)return [];
+  var skip={dir:1,pd:1,bos:1,hunt_prev:1,hunt_liq:1,gap_daily:1,gap_hourly:1};
+  var out=[];
+  CHK.forEach(function(g){g.items.forEach(function(it){
+    if(skip[it.k])return;
+    var v=chk[it.k];
+    if(it.type==='check'){if(v===true)out.push(it.label);}
+    else if(v){var o=(it.opts||[]).filter(function(x){return x[0]===v;})[0];out.push(it.label+': '+(o?o[1]:v));}
+  });});
+  return out;
+}
 function jStats(){
-  var w=0,l=0,netR=0,dsum=0,dn=0;
+  var w=0,l=0,n=0,netR=0,dsum=0,dn=0;
   S.trades.forEach(function(t){
+    if(t.status==='pending')return;
+    n++;
     if(t.outcome==='win')w++;else if(t.outcome==='loss')l++;
     var r=parseFloat(t.r);if(!isNaN(r))netR+=r;
     var d=+t.discipline;if(d>0){dsum+=d;dn++;}
   });
   var decided=w+l;
-  return {n:S.trades.length,wr:decided?Math.round(w/decided*100):0,netR:Math.round(netR*100)/100,avgD:dn?(dsum/dn).toFixed(1):'-'};
+  return {n:n,wr:decided?Math.round(w/decided*100):0,netR:Math.round(netR*100)/100,avgD:dn?(dsum/dn).toFixed(1):'-'};
 }
 function journalForm(){
   var d=S.draft,h='<div class="jform">';
@@ -330,8 +420,9 @@ function journalForm(){
   return h+'</div>';
 }
 function tradeCard(t){
-  var ocl=t.outcome==='win'?'win':t.outcome==='loss'?'loss':'be';
-  var ocL=t.outcome==='win'?'برد':t.outcome==='loss'?'باخت':'سربه‌سر';
+  var pend=t.status==='pending';
+  var ocl=pend?'pend':(t.outcome==='win'?'win':t.outcome==='loss'?'loss':'be');
+  var ocL=t.outcome==='win'?'برد':t.outcome==='loss'?'باخت':t.outcome==='be'?'سربه‌سر':'';
   var dirL=t.dir==='up'?'صعودی':t.dir==='dn'?'نزولی':'';
   var su=Array.isArray(t.setup)?t.setup:(t.setup?[t.setup]:[]);
   var form=[isoFa(t.setupdate),t.setuptime?('ساعت '+toFa(t.setuptime)):''].filter(Boolean).join(' ');
@@ -344,15 +435,20 @@ function tradeCard(t){
   if(t.amount!==''&&t.amount!=null)nums.push('<span>مبلغ: <b>'+esc(t.amount)+'</b></span>');
   if(t.balance!==''&&t.balance!=null)nums.push('<span>بالانس: <b>'+esc(t.balance)+'</b></span>');
   var h='<div class="trade '+ocl+'">';
-  h+='<div class="thead"><span class="tsym">'+esc(t.symbol)+'</span>'+(dirL?'<span class="tdir '+(t.dir==='up'?'up':'dn')+'">'+dirL+'</span>':'')+'<span class="tout '+ocl+'">'+ocL+'</span></div>';
+  h+='<div class="thead"><span class="tsym">'+esc(t.symbol||'بدون نماد')+'</span>'+(dirL?'<span class="tdir '+(t.dir==='up'?'up':'dn')+'">'+dirL+'</span>':'')+(pend?'<span class="tpend">در انتظار تکمیل</span>':'<span class="tout '+ocl+'">'+ocL+'</span>')+'</div>';
   if(tags.length)h+='<div class="tmeta">'+tags.map(function(x){return '<span class="tg">'+esc(x)+'</span>';}).join('')+'</div>';
   if(nums.length)h+='<div class="tnums">'+nums.join('')+'</div>';
-  if(+t.discipline>0){var ds='';for(var i=1;i<=5;i++){ds+='<span class="star'+(t.discipline>=i?' on':'')+'" style="width:15px;height:15px">'+I.star+'</span>';}h+='<div class="stars" style="gap:3px">'+ds+'</div>';}
+  if(!pend&&+t.discipline>0){var ds='';for(var i=1;i<=5;i++){ds+='<span class="star'+(t.discipline>=i?' on':'')+'" style="width:15px;height:15px">'+I.star+'</span>';}h+='<div class="stars" style="gap:3px">'+ds+'</div>';}
   if(t.mistake&&t.mistake!=='none')h+='<div class="tg" style="align-self:flex-start;color:#A8472F;background:#FBEDE9">'+esc(MISL[t.mistake])+'</div>';
   if(t.lesson)h+='<div class="tlesson">'+esc(t.lesson)+'</div>';
   if(t.note)h+='<div class="tdate" style="font-size:12.5px">'+esc(t.note)+'</div>';
+  var ct=chkTags(t.chk);
+  if(ct.length){h+='<div class="chkline">چک‌لیستِ ورود ✓</div><div class="tmeta">'+ct.map(function(x){return '<span class="tg">'+esc(x)+'</span>';}).join('')+'</div>';}
   if(t.hasImg){var im=localStorage.getItem('planner_trade_img_'+t.id);if(im)h+='<img class="tphoto" data-act="opentradeimg" data-id="'+t.id+'" src="'+im+'">';}
-  h+='<div class="thead" style="margin-top:2px"><span class="tdate">'+esc(t.date)+'</span><button class="del" data-act="deltrade" data-id="'+t.id+'">'+I.trash+'</button></div>';
+  h+='<div class="thead" style="margin-top:2px"><span class="tdate" style="flex:1">'+esc(t.date)+'</span>';
+  if(pend)h+='<button class="solid" style="padding:7px 14px;font-size:13px" data-act="completetrade" data-id="'+t.id+'">تکمیل</button>';
+  else h+='<button class="ghost" style="padding:6px 10px;font-size:12.5px" data-act="completetrade" data-id="'+t.id+'">ویرایش</button>';
+  h+='<button class="del" data-act="deltrade" data-id="'+t.id+'">'+I.trash+'</button></div>';
   return h+'</div>';
 }
 function viewJournal(){
@@ -362,9 +458,10 @@ function viewJournal(){
   h+='<div class="stat '+(st.n?(st.wr>=50?'good':'bad'):'')+'"><b>'+toFa(st.wr)+'٪</b><span>وین‌ریت</span></div>';
   h+='<div class="stat '+(st.netR>=0?'good':'bad')+'"><b>'+(st.netR>0?'+':'')+toFa(st.netR)+'</b><span>مجموع R</span></div>';
   h+='<div class="stat"><b>'+toFa(st.avgD)+'</b><span>نظم (۵)</span></div></div>';
-  if(S.jed){h+=journalForm();}
+  if(S.chkOpen){h+=viewChecklist();}
+  else if(S.jed){h+=journalForm();}
   else{
-    h+='<button class="wide" data-act="openjournal">'+I.plus+' ثبتِ معامله‌ی جدید</button>';
+    h+='<button class="wide" data-act="openchk">'+I.plus+' ثبتِ معامله‌ی جدید (چک‌لیست)</button>';
     if(!S.trades.length)h+='<div class="empty">هنوز معامله‌ای ثبت نکردی.</div>';
     S.trades.forEach(function(t){h+=tradeCard(t);});
   }
@@ -459,6 +556,8 @@ document.getElementById('view').addEventListener('click',function(e){
   var jt=e.target.closest('[data-jtog]');if(jt){syncDraft();var fld=jt.getAttribute('data-jtog'),val=jt.getAttribute('data-val'),a=S.draft[fld]||[],ix=a.indexOf(val);if(ix>=0)a.splice(ix,1);else a.push(val);S.draft[fld]=a;render();return;}
   var js=e.target.closest('[data-jset]');if(js){syncDraft();S.draft[js.getAttribute('data-jset')]=js.getAttribute('data-val');render();return;}
   var str=e.target.closest('[data-jstar]');if(str){syncDraft();S.draft.discipline=+str.getAttribute('data-jstar');render();return;}
+  var cse=e.target.closest('[data-cset]');if(cse){var ck=cse.getAttribute('data-cset');S.chk[ck]=!S.chk[ck];render();return;}
+  var csl=e.target.closest('[data-csel]');if(csl){S.chk[csl.getAttribute('data-csel')]=csl.getAttribute('data-val');render();return;}
   var el=e.target.closest('[data-act]');if(!el)return;var act=el.getAttribute('data-act'),id=el.getAttribute('data-id');
   if(act==='addtask'){var i=document.getElementById('newtask'),v=i.value.trim();if(!v)return;S.tasks.push({id:uid(),text:v,done:false});save('planner_tasks',S.tasks);render();}
   else if(act==='toggle'){S.tasks=S.tasks.map(function(t){return t.id===id?Object.assign({},t,{done:!t.done}):t;});save('planner_tasks',S.tasks);render();}
@@ -473,11 +572,37 @@ document.getElementById('view').addEventListener('click',function(e){
   else if(act==='export'){exportData();}
   else if(act==='pickimport'){document.getElementById('importinput').click();}
   else if(act==='openjournal'){S.draft=blankDraft();S.jed=true;render();}
-  else if(act==='canceltrade'){S.jed=false;S.draft=null;render();}
+  else if(act==='openchk'){S.chk={};S.chkOpen=true;S.jed=false;S.editId=null;render();}
+  else if(act==='cancelchk'){S.chkOpen=false;S.chk=null;render();}
+  else if(act==='submitchk'){
+    var c=S.chk,setup=[];
+    if(c.bos)setup.push('bos');
+    if(c.hunt_prev)setup.push('hunt_prev');
+    if(c.hunt_liq)setup.push('hunt_liq');
+    if(c.gap_daily)setup.push('gap1d');
+    if(c.gap_hourly==='gap1h')setup.push('gap1h');else if(c.gap_hourly==='gap4h')setup.push('gap4h');else if(c.gap_hourly==='both'){setup.push('gap1h');setup.push('gap4h');}
+    var nt=blankDraft();
+    nt.id=uid();nt.date=faDate({day:'numeric',month:'long'});nt.dir=c.dir||'';nt.pd=c.pd||'';nt.setup=setup;nt.chk=Object.assign({},c);nt.status='pending';nt.hasImg=false;
+    delete nt.imgData;delete nt.imgType;
+    S.trades.unshift(nt);save('planner_trades',S.trades);
+    S.chkOpen=false;S.chk=null;render();
+  }
+  else if(act==='completetrade'){var tt=S.trades.filter(function(x){return x.id===id;})[0];if(!tt)return;var dr=Object.assign(blankDraft(),tt);if(!Array.isArray(dr.setup))dr.setup=dr.setup?[dr.setup]:[];dr.imgData=tt.hasImg?(localStorage.getItem('planner_trade_img_'+id)||''):'';dr.imgType=tt.imgType||'';S.draft=dr;S.editId=id;S.jed=true;S.chkOpen=false;render();}
+  else if(act==='canceltrade'){S.jed=false;S.draft=null;S.editId=null;render();}
   else if(act==='tradeimg'){syncDraft();document.getElementById('tradeimginput').click();}
   else if(act==='opentradeimg'){var im=localStorage.getItem('planner_trade_img_'+id);if(im)openImg(im,'اسکرین‌شات');}
   else if(act==='deltrade'){if(!confirm('این معامله حذف بشه؟'))return;try{localStorage.removeItem('planner_trade_img_'+id);}catch(x){}S.trades=S.trades.filter(function(t){return t.id!==id;});save('planner_trades',S.trades);render();}
-  else if(act==='savetrade'){syncDraft();var d=S.draft;if(!d.symbol||!d.outcome){alert('حداقل نماد و نتیجه رو انتخاب کن.');return;}var tid=uid();if(d.imgData){try{localStorage.setItem('planner_trade_img_'+tid,d.imgData);}catch(er){}}S.trades.unshift({id:tid,date:faDate({day:'numeric',month:'long'}),symbol:d.symbol,dir:d.dir,setup:d.setup,setupother:d.setupother,pd:d.pd,setupdate:d.setupdate,setuptime:d.setuptime,session:d.session,entry:d.entry,sl:d.sl,tp:d.tp,outcome:d.outcome,risk:d.risk,r:d.r,pct:d.pct,pips:d.pips,amount:d.amount,balance:d.balance,plan:d.plan,emotion:d.emotion,broke:d.broke,discipline:d.discipline,mistake:d.mistake,lesson:d.lesson,note:d.note,hasImg:!!d.imgData,imgType:d.imgType});save('planner_trades',S.trades);S.jed=false;S.draft=null;render();}
+  else if(act==='savetrade'){syncDraft();var d=S.draft;if(!d.symbol||!d.outcome){alert('حداقل نماد و نتیجه رو انتخاب کن.');return;}
+    if(S.editId){
+      var ei=S.trades.map(function(t){return t.id;}).indexOf(S.editId);
+      if(ei>=0){var ex=S.trades[ei];if(d.imgData){try{localStorage.setItem('planner_trade_img_'+S.editId,d.imgData);}catch(er){}}
+        S.trades[ei]=Object.assign({},ex,{symbol:d.symbol,dir:d.dir,setup:d.setup,setupother:d.setupother,pd:d.pd,setupdate:d.setupdate,setuptime:d.setuptime,session:d.session,entry:d.entry,sl:d.sl,tp:d.tp,outcome:d.outcome,risk:d.risk,r:d.r,pct:d.pct,pips:d.pips,amount:d.amount,balance:d.balance,plan:d.plan,emotion:d.emotion,broke:d.broke,discipline:d.discipline,mistake:d.mistake,lesson:d.lesson,note:d.note,chk:d.chk,status:'done',hasImg:d.imgData?true:!!ex.hasImg,imgType:d.imgType||ex.imgType});}
+      S.editId=null;
+    } else {
+      var tid=uid();if(d.imgData){try{localStorage.setItem('planner_trade_img_'+tid,d.imgData);}catch(er){}}
+      S.trades.unshift({id:tid,date:faDate({day:'numeric',month:'long'}),symbol:d.symbol,dir:d.dir,setup:d.setup,setupother:d.setupother,pd:d.pd,setupdate:d.setupdate,setuptime:d.setuptime,session:d.session,entry:d.entry,sl:d.sl,tp:d.tp,outcome:d.outcome,risk:d.risk,r:d.r,pct:d.pct,pips:d.pips,amount:d.amount,balance:d.balance,plan:d.plan,emotion:d.emotion,broke:d.broke,discipline:d.discipline,mistake:d.mistake,lesson:d.lesson,note:d.note,chk:d.chk,status:'done',hasImg:!!d.imgData,imgType:d.imgType});
+    }
+    save('planner_trades',S.trades);S.jed=false;S.draft=null;render();}
 });
 document.getElementById('nav').addEventListener('click',function(e){var b=e.target.closest('[data-tab]');if(!b)return;syncDraft();S.tab=b.getAttribute('data-tab');S.editor=false;S.fmsg='';render();});
 
